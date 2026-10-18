@@ -132,32 +132,29 @@ func main() {
 
 // enableCORS wraps an http.Handler with standard CORS headers to permit frontend communication.
 func enableCORS(next http.Handler, allowed []string) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // Determine allowed origin based on configuration
-        origin := r.Header.Get("Origin")
-        allowedOrigin := "*"
-        if len(allowed) > 0 {
-            for _, o := range allowed {
-                if o == "*" {
-                    allowedOrigin = "*"
-                    break
-                }
-                if o == origin {
-                    allowedOrigin = origin
-                    break
-                }
-            }
-        }
-        w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
-        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
-        if r.Method == http.MethodOptions {
-            w.WriteHeader(http.StatusOK)
-            return
-        }
-        next.ServeHTTP(w, r)
-    })
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Determine allowed origin based on configuration
+		origin := r.Header.Get("Origin")
+		allowedOrigin := "*"
+		if len(allowed) > 0 {
+			for _, o := range allowed {
+				if o == "*" {
+					allowedOrigin = "*"
+					break
+				}
+				if o == origin {
+					allowedOrigin = origin
+					break
+				}
+			}
+		}
+		w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
-
-}
-
