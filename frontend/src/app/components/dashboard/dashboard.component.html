@@ -1,0 +1,120 @@
+<div class="dashboard-page">
+  <!-- Header Banner -->
+  <div class="welcome-banner card">
+    <div class="banner-content">
+      <h2>Welcome back, {{ auth.currentUser().first_name }}! 👋</h2>
+      <p class="text-muted">
+        {{ auth.currentUser().designation }} • {{ auth.currentUser().department }} • Employee Code: {{ auth.currentUser().employee_code }}
+      </p>
+    </div>
+    <div class="banner-actions">
+      <a routerLink="/apply" class="btn btn-primary">
+        <span>+</span> Apply for Leave
+      </a>
+      <a *ngIf="auth.isManager()" routerLink="/approvals" class="btn btn-secondary">
+        <span>📋</span> Approvals ({{ managerPendingCount() }})
+      </a>
+    </div>
+  </div>
+
+  <!-- Manager Pending Alert if requests exist -->
+  <div *ngIf="auth.isManager() && managerPendingCount() > 0" class="alert alert-info manager-alert">
+    <div>
+      <strong>Action Required:</strong> You have <strong>{{ managerPendingCount() }}</strong> pending leave request(s) waiting for your review.
+    </div>
+    <a routerLink="/approvals" class="btn btn-primary btn-sm">Review Now →</a>
+  </div>
+
+  <!-- Metric Summary Cards -->
+  <div class="metrics-grid">
+    <div class="metric-card card">
+      <div class="metric-icon approved-icon">✓</div>
+      <div class="metric-data">
+        <span class="metric-label">Approved Leaves</span>
+        <h3 class="metric-value">{{ approvedCount() }}</h3>
+        <span class="metric-sub">{{ totalDaysApproved() }} days taken</span>
+      </div>
+    </div>
+
+    <div class="metric-card card">
+      <div class="metric-icon pending-icon">⏳</div>
+      <div class="metric-data">
+        <span class="metric-label">Pending Requests</span>
+        <h3 class="metric-value">{{ pendingCount() }}</h3>
+        <span class="metric-sub">Awaiting manager approval</span>
+      </div>
+    </div>
+
+    <div class="metric-card card">
+      <div class="metric-icon rejected-icon">✕</div>
+      <div class="metric-data">
+        <span class="metric-label">Rejected / Cancelled</span>
+        <h3 class="metric-value">{{ rejectedCount() }}</h3>
+        <span class="metric-sub">Historical requests</span>
+      </div>
+    </div>
+
+    <div class="metric-card card">
+      <div class="metric-icon total-icon">📊</div>
+      <div class="metric-data">
+        <span class="metric-label">Total Applications</span>
+        <h3 class="metric-value">{{ leaves().length }}</h3>
+        <span class="metric-sub">Current tenure</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Activity Section -->
+  <div class="card recent-activity">
+    <div class="card-header">
+      <h3 class="card-title">Recent Leave Applications</h3>
+      <a routerLink="/my-leaves" class="view-all-link">View All History →</a>
+    </div>
+
+    <div *ngIf="loading()" class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading your leave records...</p>
+    </div>
+
+    <div *ngIf="!loading() && leaves().length === 0" class="empty-state">
+      <div class="empty-icon">📅</div>
+      <h4>No Leave Requests Found</h4>
+      <p>You haven't submitted any leave requests yet.</p>
+      <a routerLink="/apply" class="btn btn-primary">Submit Your First Leave</a>
+    </div>
+
+    <div *ngIf="!loading() && leaves().length > 0" class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Date Range</th>
+            <th>Duration</th>
+            <th>Reason</th>
+            <th>Status</th>
+            <th>Reviewer</th>
+            <th>Submitted On</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of recentLeaves()">
+            <td><strong>{{ item.leave_type }}</strong></td>
+            <td>{{ item.start_date }} <span class="text-muted">to</span> {{ item.end_date }}</td>
+            <td><span class="duration-pill">{{ item.total_days }} day(s)</span></td>
+            <td class="reason-cell" [title]="item.reason">{{ item.reason }}</td>
+            <td>
+              <span class="badge" [ngClass]="'badge-' + item.status.toLowerCase()">
+                {{ item.status }}
+              </span>
+            </td>
+            <td>
+              <span *ngIf="item.reviewer_name">{{ item.reviewer_name }}</span>
+              <span *ngIf="!item.reviewer_name" class="text-muted">-</span>
+            </td>
+            <td>{{ item.created_at | date:'mediumDate' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

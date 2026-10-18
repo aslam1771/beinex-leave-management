@@ -1,0 +1,183 @@
+<div class="manager-approvals-page">
+  <div class="page-header">
+    <div class="header-left">
+      <h2>Manager Approval Center</h2>
+      <p class="text-muted">Review, approve, or reject pending leave requests submitted by your team members.</p>
+    </div>
+    <div class="header-right">
+      <span class="badge badge-role">Acting as: {{ auth.currentUser().first_name }} {{ auth.currentUser().last_name }} ({{ auth.currentUser().role }})</span>
+    </div>
+  </div>
+
+  <!-- Non-Manager Warning Banner if an employee is active -->
+  <div *ngIf="!auth.isManager()" class="alert alert-danger role-warning">
+    <div>
+      <strong>Restricted Access:</strong> The currently selected demo employee
+      (<strong>{{ auth.currentUser().first_name }} {{ auth.currentUser().last_name }}</strong>)
+      has role <strong>{{ auth.currentUser().role }}</strong>, which does not have managerial approval rights.
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" (click)="auth.switchUser(2)">
+      Switch to Sarah Connor (Manager) →
+    </button>
+  </div>
+
+  <ng-container *ngIf="auth.isManager()">
+    <!-- Filters Card -->
+    <div class="card filter-card">
+      <div class="filter-grid">
+        <div class="filter-item">
+          <label class="form-label" for="mgrFilterType">Leave Type</label>
+          <select id="mgrFilterType" class="form-select" [(ngModel)]="typeFilter" (change)="onFilterChange()">
+            <option value="">All Types</option>
+            <option value="ANNUAL">Annual Leave</option>
+            <option value="SICK">Sick Leave</option>
+            <option value="CASUAL">Casual Leave</option>
+            <option value="MATERNITY">Maternity</option>
+            <option value="PATERNITY">Paternity</option>
+            <option value="UNPAID">Unpaid Leave</option>
+          </select>
+        </div>
+
+        <div class="filter-item">
+          <label class="form-label" for="mgrFilterFrom">From Date</label>
+          <input id="mgrFilterFrom" type="date" class="form-control" [(ngModel)]="fromDate" (change)="onFilterChange()" />
+        </div>
+
+        <div class="filter-item">
+          <label class="form-label" for="mgrFilterTo">To Date</label>
+          <input id="mgrFilterTo" type="date" class="form-control" [(ngModel)]="toDate" (change)="onFilterChange()" />
+        </div>
+
+        <div class="filter-actions">
+          <button type="button" class="btn btn-secondary" (click)="resetFilters()">
+            Reset
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Approvals List Card -->
+    <div class="card table-card">
+      <div *ngIf="loading()" class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading pending team requests...</p>
+      </div>
+
+      <div *ngIf="!loading() && pendingLeaves().length === 0" class="empty-state">
+        <div class="empty-icon">🎉</div>
+        <h4>All Caught Up!</h4>
+        <p>There are no pending leave requests requiring your review at this time.</p>
+      </div>
+
+      <div *ngIf="!loading() && pendingLeaves().length > 0" class="requests-list">
+        <div *ngFor="let item of pendingLeaves()" class="request-card">
+          <div class="request-main">
+            <!-- Employee Info Header -->
+            <div class="emp-header">
+              <div class="emp-avatar">{{ item.employee_name.charAt(0) }}</div>
+              <div class="emp-details">
+                <h4 class="emp-name">{{ item.employee_name }}</h4>
+                <div class="emp-meta">
+                  <span>{{ item.employee_department }}</span> •
+                  <span>{{ item.employee_code }}</span> •
+                  <span class="text-muted">{{ item.employee_email }}</span>
+                </div>
+              </div>
+              <div class="request-badge">
+                <span class="badge badge-pending">Pending Review</span>
+              </div>
+            </div>
+
+            <!-- Leave Info Row -->
+            <div class="leave-info-grid">
+              <div class="info-block">
+                <span class="info-label">Leave Type:</span>
+                <strong>{{ item.leave_type }}</strong>
+              </div>
+              <div class="info-block">
+                <span class="info-label">Dates:</span>
+                <span>{{ item.start_date }} <span class="text-muted">to</span> {{ item.end_date }}</span>
+              </div>
+              <div class="info-block">
+                <span class="info-label">Duration:</span>
+                <span class="days-badge">{{ item.total_days }} day(s)</span>
+              </div>
+              <div class="info-block">
+                <span class="info-label">Requested On:</span>
+                <span>{{ item.created_at | date:'mediumDate' }}</span>
+              </div>
+            </div>
+
+            <!-- Reason Box -->
+            <div class="reason-box">
+              <span class="info-label">Reason:</span>
+              <p>{{ item.reason }}</p>
+            </div>
+
+            <!-- Reviewer Comments Input -->
+            <div class="comments-box">
+              <label class="form-label" [for]="'comment-' + item.id">
+                Manager Comments / Notes <span class="text-muted">(Optional for approval, required for rejection)</span>
+              </label>
+              <input
+                [id]="'comment-' + item.id"
+                type="text"
+                class="form-control"
+                placeholder="Add feedback or approval notes..."
+                [(ngModel)]="comments[item.id]"
+              />
+            </div>
+          </div>
+
+          <!-- Actions Footer -->
+          <div class="request-actions">
+            <button
+              type="button"
+              class="btn btn-success"
+              [disabled]="processingId() === item.id"
+              (click)="approve(item)"
+            >
+              <span *ngIf="processingId() === item.id" class="spinner"></span>
+              <span *ngIf="processingId() !== item.id">✓ Approve</span>
+            </button>
+            <button
+              type="button"
+              class="btn btn-danger"
+              [disabled]="processingId() === item.id"
+              (click)="reject(item)"
+            >
+              <span *ngIf="processingId() === item.id" class="spinner"></span>
+              <span *ngIf="processingId() !== item.id">✕ Reject</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pagination Footer -->
+      <div *ngIf="!loading() && pagination().total_pages > 1" class="pagination-footer">
+        <div class="pagination-info text-muted">
+          Showing page {{ pagination().page }} of {{ pagination().total_pages }} ({{ pagination().total }} pending)
+        </div>
+        <div class="pagination-controls">
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm"
+            [disabled]="pagination().page <= 1"
+            (click)="goToPage(pagination().page - 1)"
+          >
+            ← Previous
+          </button>
+          <span class="current-page-num">{{ pagination().page }}</span>
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm"
+            [disabled]="pagination().page >= pagination().total_pages"
+            (click)="goToPage(pagination().page + 1)"
+          >
+            Next →
+          </button>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>

@@ -1,0 +1,222 @@
+<div class="my-leaves-page">
+  <div class="page-header">
+    <div class="header-left">
+      <h2>My Leave Applications</h2>
+      <p class="text-muted">Review your leave history, track approval progress, and manage pending requests.</p>
+    </div>
+    <div class="header-right">
+      <a routerLink="/apply" class="btn btn-primary">+ Apply for Leave</a>
+    </div>
+  </div>
+
+  <!-- Filters Card -->
+  <div class="card filter-card">
+    <div class="filter-grid">
+      <div class="filter-item">
+        <label class="form-label" for="filterStatus">Status</label>
+        <select id="filterStatus" class="form-select" [(ngModel)]="statusFilter" (change)="onFilterChange()">
+          <option value="">All Statuses</option>
+          <option value="PENDING">Pending Review</option>
+          <option value="APPROVED">Approved</option>
+          <option value="REJECTED">Rejected</option>
+          <option value="CANCELLED">Cancelled</option>
+        </select>
+      </div>
+
+      <div class="filter-item">
+        <label class="form-label" for="filterType">Leave Type</label>
+        <select id="filterType" class="form-select" [(ngModel)]="typeFilter" (change)="onFilterChange()">
+          <option value="">All Types</option>
+          <option value="ANNUAL">Annual Leave</option>
+          <option value="SICK">Sick Leave</option>
+          <option value="CASUAL">Casual Leave</option>
+          <option value="MATERNITY">Maternity</option>
+          <option value="PATERNITY">Paternity</option>
+          <option value="UNPAID">Unpaid Leave</option>
+        </select>
+      </div>
+
+      <div class="filter-item">
+        <label class="form-label" for="filterFrom">From Date</label>
+        <input id="filterFrom" type="date" class="form-control" [(ngModel)]="fromDate" (change)="onFilterChange()" />
+      </div>
+
+      <div class="filter-item">
+        <label class="form-label" for="filterTo">To Date</label>
+        <input id="filterTo" type="date" class="form-control" [(ngModel)]="toDate" (change)="onFilterChange()" />
+      </div>
+
+      <div class="filter-actions">
+        <button type="button" class="btn btn-secondary" (click)="resetFilters()">
+          Clear Filters
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaves Table Card -->
+  <div class="card table-card">
+    <div *ngIf="loading()" class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading leave applications...</p>
+    </div>
+
+    <div *ngIf="!loading() && leaves().length === 0" class="empty-state">
+      <div class="empty-icon">📂</div>
+      <h4>No Applications Found</h4>
+      <p>No leave records match your current filter criteria.</p>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="resetFilters()">Reset Filters</button>
+    </div>
+
+    <div *ngIf="!loading() && leaves().length > 0" class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Type</th>
+            <th>Date Range</th>
+            <th>Days</th>
+            <th>Reason</th>
+            <th>Status</th>
+            <th>Manager Review</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of leaves()">
+            <td><span class="id-pill">#{{ item.id }}</span></td>
+            <td><strong>{{ item.leave_type }}</strong></td>
+            <td>
+              {{ item.start_date }}
+              <span class="text-muted">→</span>
+              {{ item.end_date }}
+            </td>
+            <td><span class="days-badge">{{ item.total_days }}d</span></td>
+            <td class="reason-cell" [title]="item.reason">{{ item.reason }}</td>
+            <td>
+              <span class="badge" [ngClass]="'badge-' + item.status.toLowerCase()">
+                {{ item.status }}
+              </span>
+            </td>
+            <td>
+              <div *ngIf="item.reviewer_name" class="review-info">
+                <span class="reviewer-name">{{ item.reviewer_name }}</span>
+                <span *ngIf="item.review_comments" class="review-comment" [title]="item.review_comments">
+                  "{{ item.review_comments }}"
+                </span>
+              </div>
+              <span *ngIf="!item.reviewer_name" class="text-muted">Awaiting Review</span>
+            </td>
+            <td>
+              <div class="action-buttons">
+                <button type="button" class="btn btn-secondary btn-sm" (click)="viewDetails(item)">
+                  View
+                </button>
+                <button
+                  *ngIf="item.status === 'PENDING'"
+                  type="button"
+                  class="btn btn-danger btn-sm"
+                  [disabled]="cancellingId() === item.id"
+                  (click)="cancelRequest(item)"
+                >
+                  <span *ngIf="cancellingId() === item.id" class="spinner"></span>
+                  <span *ngIf="cancellingId() !== item.id">Cancel</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination Footer -->
+    <div *ngIf="!loading() && pagination().total_pages > 1" class="pagination-footer">
+      <div class="pagination-info text-muted">
+        Showing page {{ pagination().page }} of {{ pagination().total_pages }} ({{ pagination().total }} total records)
+      </div>
+      <div class="pagination-controls">
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          [disabled]="pagination().page <= 1"
+          (click)="goToPage(pagination().page - 1)"
+        >
+          ← Previous
+        </button>
+        <span class="current-page-num">{{ pagination().page }}</span>
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          [disabled]="pagination().page >= pagination().total_pages"
+          (click)="goToPage(pagination().page + 1)"
+        >
+          Next →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leave Details Modal -->
+  <div *ngIf="selectedLeave()" class="modal-backdrop" (click)="closeModal()">
+    <div class="modal-card card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Leave Application #{{ selectedLeave()!.id }}</h3>
+        <button type="button" class="btn-close" (click)="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-row">
+          <span class="detail-label">Status:</span>
+          <span class="badge" [ngClass]="'badge-' + selectedLeave()!.status.toLowerCase()">
+            {{ selectedLeave()!.status }}
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Employee:</span>
+          <span>{{ selectedLeave()!.employee_name }} ({{ selectedLeave()!.employee_code }})</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Department:</span>
+          <span>{{ selectedLeave()!.employee_department }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Leave Type:</span>
+          <strong>{{ selectedLeave()!.leave_type }}</strong>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Dates:</span>
+          <span>{{ selectedLeave()!.start_date }} to {{ selectedLeave()!.end_date }} ({{ selectedLeave()!.total_days }} day(s))</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Reason:</span>
+          <p class="detail-reason">{{ selectedLeave()!.reason }}</p>
+        </div>
+        <div *ngIf="selectedLeave()!.reviewer_name" class="reviewer-section">
+          <h4>Review Details</h4>
+          <div class="detail-row">
+            <span class="detail-label">Reviewed By:</span>
+            <span>{{ selectedLeave()!.reviewer_name }}</span>
+          </div>
+          <div *ngIf="selectedLeave()!.review_comments" class="detail-row">
+            <span class="detail-label">Comments:</span>
+            <p class="detail-comments">{{ selectedLeave()!.review_comments }}</p>
+          </div>
+          <div *ngIf="selectedLeave()!.reviewed_at" class="detail-row">
+            <span class="detail-label">Reviewed On:</span>
+            <span>{{ selectedLeave()!.reviewed_at | date:'medium' }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button
+          *ngIf="selectedLeave()!.status === 'PENDING'"
+          type="button"
+          class="btn btn-danger btn-sm"
+          (click)="cancelRequest(selectedLeave()!); closeModal()"
+        >
+          Cancel Request
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,126 @@
+<div class="app-container">
+  <!-- Top Header Bar -->
+  <header class="top-header">
+    <div class="header-left">
+      <button type="button" class="btn-toggle-sidebar" (click)="toggleSidebar()">
+        ☰
+      </button>
+      <div class="brand">
+        <div class="brand-logo">B</div>
+        <div class="brand-text">
+          <h1>Beinex</h1>
+          <span>Employee Leave Management</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <!-- Backend Status Pill -->
+      <div class="status-pill" [ngClass]="backendOnline() === true ? 'status-online' : 'status-offline'">
+        <span class="status-dot"></span>
+        <span *ngIf="backendOnline() === true">API Online (8080)</span>
+        <span *ngIf="backendOnline() === false">API Offline</span>
+        <span *ngIf="backendOnline() === null">Connecting...</span>
+      </div>
+
+      <!-- Demo Role Switcher -->
+      <div class="demo-switcher">
+        <div class="switcher-label">
+          <span class="demo-tag">DEMO</span>
+          <span>Active Profile:</span>
+        </div>
+        <select class="form-select user-select" [value]="auth.currentUser().id" (change)="onUserSelect($event)">
+          <optgroup label="Managers & Admins">
+            <option *ngFor="let emp of auth.employees()" [value]="emp.id" [disabled]="emp.role === 'EMPLOYEE'">
+              <span *ngIf="emp.role !== 'EMPLOYEE'">{{ emp.first_name }} {{ emp.last_name }} ({{ emp.role }} - {{ emp.department }})</span>
+            </option>
+          </optgroup>
+          <optgroup label="Direct Reports / Employees">
+            <option *ngFor="let emp of auth.employees()" [value]="emp.id" [disabled]="emp.role !== 'EMPLOYEE'">
+              <span *ngIf="emp.role === 'EMPLOYEE'">{{ emp.first_name }} {{ emp.last_name }} ({{ emp.designation }})</span>
+            </option>
+          </optgroup>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- Notification Toast Floating Container -->
+  <div class="notification-container">
+    <div
+      *ngFor="let note of notify.notifications()"
+      class="notification-toast alert"
+      [ngClass]="'alert-' + note.type"
+    >
+      <div class="toast-body">
+        <strong>{{ note.title }}</strong>
+        <p>{{ note.message }}</p>
+      </div>
+      <button type="button" class="btn-close-toast" (click)="notify.remove(note.id)">✕</button>
+    </div>
+  </div>
+
+  <div class="main-layout">
+    <!-- Left Navigation Sidebar -->
+    <aside class="sidebar" [class.collapsed]="!sidebarOpen()">
+      <!-- Active User Profile Card -->
+      <div class="sidebar-user-card">
+        <div class="avatar-circle">
+          {{ auth.currentUser().first_name.charAt(0) }}{{ auth.currentUser().last_name.charAt(0) }}
+        </div>
+        <div class="user-meta">
+          <h4 class="user-name">{{ auth.currentUser().first_name }} {{ auth.currentUser().last_name }}</h4>
+          <span class="user-title">{{ auth.currentUser().designation }}</span>
+          <div class="user-tags">
+            <span class="badge badge-role">{{ auth.currentUser().role }}</span>
+            <span class="user-code">{{ auth.currentUser().employee_code }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="sidebar-nav">
+        <a routerLink="/dashboard" routerLinkActive="active" class="nav-item">
+          <span class="nav-icon">📊</span>
+          <span class="nav-text">Dashboard</span>
+        </a>
+
+        <a routerLink="/apply" routerLinkActive="active" class="nav-item">
+          <span class="nav-icon">✍️</span>
+          <span class="nav-text">Apply for Leave</span>
+        </a>
+
+        <a routerLink="/my-leaves" routerLinkActive="active" class="nav-item">
+          <span class="nav-icon">📁</span>
+          <span class="nav-text">My Leaves</span>
+        </a>
+
+        <a
+          routerLink="/approvals"
+          routerLinkActive="active"
+          class="nav-item nav-item-approvals"
+          [class.has-permission]="auth.isManager()"
+        >
+          <span class="nav-icon">📋</span>
+          <span class="nav-text">Manager Approvals</span>
+          <span *ngIf="auth.isManager()" class="manager-indicator">Active</span>
+        </a>
+      </nav>
+
+      <!-- Demo Helper Card -->
+      <div class="sidebar-footer">
+        <div class="demo-hint-box">
+          <span class="hint-title">💡 Pair-Programming Demo</span>
+          <p>
+            Switch to <strong>Sarah Connor (Manager)</strong> in the top bar to test approving or rejecting pending team requests.
+          </p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="content-area">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>
